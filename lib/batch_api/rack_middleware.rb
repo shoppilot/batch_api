@@ -6,7 +6,8 @@ module BatchApi
     end
 
     def call(env)
-      if batch_request?(env)
+      case
+      when batch_endpoint?(env) && batch_method?(env)
         begin
           request = request_klass.new(env)
           result = BatchApi::Processor.new(request, @app).execute!
@@ -14,6 +15,8 @@ module BatchApi
         rescue => err
           ErrorWrapper.new(err).render
         end
+      when batch_endpoint?(env) && options?(env)
+        [204, self.class.content_type.merge(self.class.allow), '']
       else
         @app.call(env)
       end
@@ -23,11 +26,22 @@ module BatchApi
       {"Content-Type" => "application/json"}
     end
 
+    def self.allow
+      {"Allow" => BatchApi.config.verb.to_s.upcase}
+    end
+
     private
 
-    def batch_request?(env)
-      env["PATH_INFO"] == BatchApi.config.endpoint &&
-        env["REQUEST_METHOD"] == BatchApi.config.verb.to_s.upcase
+    def batch_endpoint?(env)
+      env["PATH_INFO"] == BatchApi.config.endpoint
+    end
+
+    def batch_method?(env)
+      env["REQUEST_METHOD"] == BatchApi.config.verb.to_s.upcase
+    end
+
+    def options?(env)
+      env["REQUEST_METHOD"] == 'OPTIONS'
     end
 
     def request_klass
