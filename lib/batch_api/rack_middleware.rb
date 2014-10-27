@@ -11,7 +11,11 @@ module BatchApi
       end
 
       def batch_endpoint?(env)
-        env["PATH_INFO"] == BatchApi.config.endpoint
+        case (endpoint = BatchApi.config.endpoint)
+        when String then endpoint == env["PATH_INFO"]
+        when Regexp then endpoint =~ env["PATH_INFO"]
+        when Proc then endpoint.call(env)
+        end
       end
 
       def batch_method?(env)
@@ -35,12 +39,14 @@ module BatchApi
         begin
           request = request_klass.new(env)
           result = BatchApi::Processor.new(request, @app).execute!
-          [200, self.class.content_type, [MultiJson.dump(result)]]
+          response = [200, self.class.content_type, [MultiJson.dump(result)]]
+          filter = init_filter(env)
+          filter.call(response)
         rescue => err
           ErrorWrapper.new(err).render
         end
       when batch_endpoint?(env) && options?(env)
-        [204, self.class.content_type.merge(self.class.allow), '']
+        [204, self.class.content_type.merge(self.class.allow), ['']]
       else
         @app.call(env)
       end
@@ -60,5 +66,15 @@ module BatchApi
     def request_klass
       defined?(ActionDispatch) ? ActionDispatch::Request : Rack::Request
     end
+
+
+    def init_filter(env)
+      filter = BatchApi.config.rack_response_filter
+      if filter.respond_to?(:new)
+        filter = filter.new(env)
+      end
+      filter
+    end
+
   end
 end

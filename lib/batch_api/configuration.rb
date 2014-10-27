@@ -20,7 +20,8 @@ module BatchApi
     endpoint: "/batch",
     limit: 50,
     batch_middleware: InternalMiddleware::DEFAULT_BATCH_MIDDLEWARE,
-    operation_middleware: InternalMiddleware::DEFAULT_OPERATION_MIDDLEWARE
+    operation_middleware: InternalMiddleware::DEFAULT_OPERATION_MIDDLEWARE,
+    rack_response_filter: -> (res) { res }
   }
 
   # Batch API Configuration
