@@ -37,7 +37,7 @@ module BatchApi
       case
       when batch_request?(env)
         begin
-          request = request_klass.new(env)
+          request = init_request(env)
           result = BatchApi::Processor.new(request, @app).execute!
           response = [200, self.class.content_type, [MultiJson.dump(result)]]
           filter = init_filter(env)
@@ -63,8 +63,26 @@ module BatchApi
       env["REQUEST_METHOD"] == 'OPTIONS'
     end
 
+
     def request_klass
       defined?(ActionDispatch) ? ActionDispatch::Request : Rack::Request
+    end
+
+    def init_request(env)
+      request = request_klass.new(env)
+
+      # Prevent OPTIONS CORS request
+      # http://www.html5rocks.com/en/tutorials/cors/
+      if request.content_type == 'text/plain'
+        body = request.body.read
+        MultiJson.load(body).each { |k, v| request[k] = v }
+      end
+
+      request
+    rescue MultiJson::ParseError
+      request
+    ensure
+      request.body.rewind
     end
 
 
