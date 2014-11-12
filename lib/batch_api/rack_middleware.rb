@@ -73,7 +73,7 @@ module BatchApi
 
       # Prevent OPTIONS CORS request
       # http://www.html5rocks.com/en/tutorials/cors/
-      if request.content_type == 'text/plain'
+      if request.content_type == 'text/plain' || request.content_type.nil?
         body = request.body.read
         MultiJson.load(body).each { |k, v| request[k] = v }
       end
