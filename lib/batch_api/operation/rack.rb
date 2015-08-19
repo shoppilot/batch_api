@@ -45,6 +45,7 @@ module BatchApi
       # there are one or two environment parameters not yet adjusted.
       def process_env
         path, qs = @url.split("?")
+        qs ||= @params.to_param
 
         # Headers
         headrs = (@headers || {}).inject({}) do |heads, (k, v)|
